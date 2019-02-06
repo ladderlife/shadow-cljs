@@ -98,7 +98,7 @@
   (when (:source-map opts)
     (doto closure-opts
       (.setSourceMapOutputPath "/dev/null")
-      (.setSourceMapDetailLevel SourceMap$DetailLevel/ALL)
+      (.setSourceMapDetailLevel SourceMap$DetailLevel/SYMBOLS)
       (.setSourceMapFormat SourceMap$Format/V3)))
 
   (when (contains? opts :pseudo-names)
@@ -836,7 +836,7 @@
       ;; inside a if (sourceMapOutputPath != null)
 
       (.setSourceMapOutputPath closure-opts "/dev/null")
-      (.setSourceMapIncludeSourcesContent closure-opts true)
+      (.setSourceMapIncludeSourcesContent closure-opts false)
       (.setApplyInputSourceMaps closure-opts true)
 
       (add-input-source-maps state cc))
@@ -956,7 +956,7 @@
     (.addSourceFile source-map (.getName src-file) (.getCode src-file))))
 
 (defn compile-js-modules
-  [{::keys [externs modules compiler compiler-options] :as state}]
+  [{::keys [externs modules ^com.google.javascript.jscomp.Compiler compiler compiler-options] :as state}]
   (let [js-mods
         (->> modules
              (map :js-module)
@@ -964,6 +964,8 @@
              (into []))
 
         ;; _ (dump-js-modules js-mods)
+
+        _ (.setSourceMapIncludeSourcesContent compiler-options false)
 
         ^Result result
         (.compileModules
@@ -994,9 +996,9 @@
               (->> modules
                    (map (fn [{:keys [goog-base module-id prepend append output-name js-module sources includes] :as mod}]
                           ;; must reset source map before calling .toSource
-                          (when source-map
-                            (.reset source-map)
-                            (add-sources-to-source-map state source-map))
+                          #_(when source-map
+                              (.reset source-map)
+                              (add-sources-to-source-map state source-map))
 
                           (let [js
                                 (if-not js-module ;; foreign only doesnt have JSModule instance
